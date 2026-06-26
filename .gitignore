@@ -32,7 +32,6 @@ dist-ssr
 *.sw?
 
 # Local env — never commit real keys (use .env.example as the template)
-.env
 .env.local
 .env.*.local
 
