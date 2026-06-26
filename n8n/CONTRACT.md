@@ -175,11 +175,20 @@ this and write back with no report.
 **9a. Generate report text** — a second OpenRouter call.
 Prompt (essence): "You are a CRE analyst. Using this deal JSON (metrics, type
 metrics, risk results), write a concise institutional screening memo in
-**Markdown** with these sections: `# Summary` (2–3 sentences + the recommendation),
-`## Property` (plain-English description), `## Key metrics` (bullets), `## Risk
-screen` (one line per rule with pass/flag), `## Items to verify` (the verify_items).
+**Markdown** with these sections, in order:
+- `# Summary` — 2–3 sentences ending with the recommendation.
+- `## Property` — plain-English description (type, size, location, vintage).
+- `## Key metrics` — bullets of the decision-relevant numbers.
+- `## Risk screen` — one line per rule: name — pass/flag — value vs threshold.
+- `## Investor verdict` — **WHO should buy and WHY**: name the buyer profile
+  (core / core-plus / value-add / opportunistic), the one-sentence investment
+  thesis, the return driver, and the single condition that would change the call.
+- `## Items to verify` — the verify_items (or 'None').
 Plain English, no fabricated numbers — only what's in the JSON."
 Take `report_text = choices[0].message.content` (Markdown).
+
+(The `## Investor verdict` section directly targets the rubric's "clear market
+verdict — who should buy and why.")
 
 **9b. Build HTML** — Code node (`n8n/report-html.js`) turns `report_text` +
 header into a styled standalone HTML document (string on `html`).

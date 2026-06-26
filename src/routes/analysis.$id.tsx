@@ -175,13 +175,23 @@ function AnalysisPage() {
 
       <RecommendationBanner recommendation={data.recommendation} reason={decision?.reason ?? ""} excluded={isExcluded} />
 
+      <HeroMetrics metrics={metrics} rules={rules} />
+
       <div className="mt-10 grid gap-6 lg:grid-cols-[2fr_1fr]">
         <section className="space-y-8">
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Risk screen</h2>
             <div className="mt-3 space-y-3">
               {rules.length === 0 && <p className="text-sm text-muted-foreground">No risk rules recorded.</p>}
-              {rules.map((r) => <RuleCard key={r.id} rule={r} />)}
+              {rules.map((r, i) => (
+                <div
+                  key={r.id}
+                  className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+                  style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+                >
+                  <RuleCard rule={r} />
+                </div>
+              ))}
             </div>
           </div>
 
@@ -213,6 +223,48 @@ function AnalysisPage() {
           )}
         </aside>
       </div>
+    </div>
+  );
+}
+
+function HeroMetrics({ metrics, rules }: { metrics: MetricBag; rules: RiskRuleResult[] }) {
+  const items: { label: string; key: string; unit: "usd" | "pct" | "ratio" }[] = [
+    { label: "NOI", key: "noi", unit: "usd" },
+    { label: "Going-in cap", key: "cap_rate_pct", unit: "pct" },
+    { label: "DSCR", key: "dscr", unit: "ratio" },
+    { label: "Occupancy", key: "occupancy_pct", unit: "pct" },
+  ];
+  const pass = rules.filter((r) => r.status === "pass").length;
+  const flags = rules.filter((r) => r.status === "high" || r.status === "critical").length;
+  const review = rules.filter((r) => r.status === "review").length;
+
+  return (
+    <div className="mt-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {items.map((it, i) => {
+          const v = metrics[it.key];
+          const missing = v === null || v === undefined || v === "";
+          return (
+            <div
+              key={it.key}
+              className="card-base p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-elevated animate-in fade-in slide-in-from-bottom-2"
+              style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+            >
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">{it.label}</div>
+              <div className={`font-display mt-2 text-3xl tabular ${missing ? "text-muted-foreground" : ""}`}>
+                {missing ? "—" : formatMetric(v, it.unit)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {rules.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-success/10 px-2.5 py-1 text-success">{pass} pass</span>
+          {flags > 0 && <span className="rounded-full bg-destructive/10 px-2.5 py-1 text-destructive">{flags} flag{flags > 1 ? "s" : ""}</span>}
+          {review > 0 && <span className="rounded-full bg-info/10 px-2.5 py-1 text-info">{review} to review</span>}
+        </div>
+      )}
     </div>
   );
 }

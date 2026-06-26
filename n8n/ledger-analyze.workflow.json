@@ -135,7 +135,7 @@
         ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"model\": \"google/gemini-2.0-flash-exp:free\", \"messages\": [ { \"role\": \"system\", \"content\": \"You are a CRE analyst. Write a concise institutional screening memo in Markdown with sections: # Summary, ## Property, ## Key metrics, ## Risk screen, ## Items to verify. Only use numbers present in the JSON; never fabricate.\" }, { \"role\": \"user\", \"content\": JSON.stringify($json.patch) } ] } }}",
+        "jsonBody": "={{ { \"model\": \"google/gemini-2.0-flash-exp:free\", \"messages\": [ { \"role\": \"system\", \"content\": \"You are a CRE analyst. Write a concise institutional screening memo in Markdown with sections in order: # Summary, ## Property, ## Key metrics, ## Risk screen, ## Investor verdict (WHO should buy and WHY: buyer profile core/core-plus/value-add/opportunistic, the one-sentence thesis, the return driver, and the condition that would change the call), ## Items to verify. Only use numbers present in the JSON; never fabricate.\" }, { \"role\": \"user\", \"content\": JSON.stringify($json.patch) } ] } }}",
         "options": {}
       },
       "id": "node-report",

@@ -60,7 +60,7 @@ function Dashboard() {
         </Link>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
         <StatCard label="Deals screened" value={stats.total.toString()} icon={<FileText className="h-4 w-4" />} />
         <StatCard label="Pursue" value={stats.pursue.toString()} icon={<CheckCircle2 className="h-4 w-4 text-success" />} />
         <StatCard label="Conditional" value={stats.conditional.toString()} icon={<AlertTriangle className="h-4 w-4 text-warning" />} />
@@ -96,7 +96,7 @@ function computeStats(rows: Row[]) {
 
 function StatCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="card-base p-4">
+    <div className="card-base p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-elevated">
       <div className="flex items-center justify-between text-muted-foreground">
         <span className="text-xs uppercase tracking-wider">{label}</span>
         {icon}

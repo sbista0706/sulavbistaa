@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -167,11 +168,15 @@ function RootComponent() {
     };
   }, [queryClient]);
 
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen flex flex-col">
         <AppHeader />
-        <main className="flex-1"><Outlet /></main>
+        <main key={pathname} className="flex-1 animate-in fade-in slide-in-from-bottom-1 duration-300 ease-out">
+          <Outlet />
+        </main>
         <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
           Ledger does not constitute investment advice. Always verify numbers against the source OM.
         </footer>
