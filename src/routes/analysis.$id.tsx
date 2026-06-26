@@ -14,7 +14,7 @@ export const Route = createFileRoute("/analysis/$id")({
   component: AnalysisPage,
 });
 
-type RuleStatus = "pass" | "caution" | "fail" | "needs_manual_review";
+type RuleStatus = "healthy" | "high_risk" | "critical_risk" | "needs_manual_review";
 
 interface Rule {
   id: string;
@@ -25,20 +25,30 @@ interface Rule {
   detail: string;
 }
 
+interface FV<T = number> { value: T | null; confidence?: string; note?: string }
 interface Extracted {
-  property_name?: { value: string | null };
-  units?: { value: number | null; confidence: string };
-  purchase_price?: { value: number | null; confidence: string };
-  gross_income?: { value: number | null; confidence: string };
-  operating_expenses?: { value: number | null; confidence: string };
-  noi?: { value: number | null; confidence: string };
-  annual_debt_service?: { value: number | null; confidence: string };
-  occupancy_pct?: { value: number | null; confidence: string };
-  avg_actual_rent?: { value: number | null; confidence: string };
-  avg_market_rent?: { value: number | null; confidence: string };
-  cap_rate_pct?: { value: number | null; confidence: string };
-  estimated_repair_cost?: { value: number | null; confidence: string };
+  property_name?: FV<string>;
+  units?: FV;
+  purchase_price?: FV;
+  gross_income?: FV;
+  operating_expenses?: FV;
+  noi?: FV;
+  noi_margin_pct?: FV;
+  market_avg_noi_margin_pct?: FV;
+  annual_debt_service?: FV;
+  dscr?: FV;
+  occupancy_pct?: FV;
+  vacancy_pct?: FV;
+  avg_actual_rent?: FV;
+  avg_market_rent?: FV;
+  cap_rate_pct?: FV;
+  estimated_repair_cost?: FV;
+  deferred_capex?: FV;
+  top_tenant_income_pct?: FV;
+  top_tenant_name?: FV<string>;
+  top_tenant_shrinking?: FV<boolean>;
 }
+
 
 interface Row {
   id: string;
@@ -146,14 +156,23 @@ function AnalysisPage() {
             <KV label="Gross income" value={fmtMoney(extracted.gross_income?.value)} confidence={extracted.gross_income?.confidence} />
             <KV label="Operating expenses" value={fmtMoney(extracted.operating_expenses?.value)} confidence={extracted.operating_expenses?.confidence} />
             <KV label="NOI" value={fmtMoney(extracted.noi?.value)} confidence={extracted.noi?.confidence} bold />
+            <KV label="NOI margin" value={fmtPct(extracted.noi_margin_pct?.value)} confidence={extracted.noi_margin_pct?.confidence} />
+            <KV label="Market avg NOI margin" value={fmtPct(extracted.market_avg_noi_margin_pct?.value)} confidence={extracted.market_avg_noi_margin_pct?.confidence} />
             <KV label="Annual debt service" value={fmtMoney(extracted.annual_debt_service?.value)} confidence={extracted.annual_debt_service?.confidence} />
+            <KV label="DSCR" value={extracted.dscr?.value !== null && extracted.dscr?.value !== undefined ? (extracted.dscr!.value as number).toFixed(2) + "x" : "—"} confidence={extracted.dscr?.confidence} />
             <KV label="Occupancy" value={fmtPct(extracted.occupancy_pct?.value)} confidence={extracted.occupancy_pct?.confidence} />
+            <KV label="Vacancy" value={fmtPct(extracted.vacancy_pct?.value)} confidence={extracted.vacancy_pct?.confidence} />
             <KV label="Cap rate" value={fmtPct(extracted.cap_rate_pct?.value)} confidence={extracted.cap_rate_pct?.confidence} />
             <KV label="Avg actual rent" value={fmtMoney(extracted.avg_actual_rent?.value) + "/mo"} confidence={extracted.avg_actual_rent?.confidence} />
             <KV label="Avg market rent" value={fmtMoney(extracted.avg_market_rent?.value) + "/mo"} confidence={extracted.avg_market_rent?.confidence} />
+            <KV label="Deferred capex" value={fmtMoney(extracted.deferred_capex?.value)} confidence={extracted.deferred_capex?.confidence} />
             <KV label="Est. repair cost" value={fmtMoney(extracted.estimated_repair_cost?.value)} confidence={extracted.estimated_repair_cost?.confidence} />
+            <KV label="Top income source" value={(extracted.top_tenant_name?.value as string) || "—"} confidence={extracted.top_tenant_name?.confidence} />
+            <KV label="Concentration" value={fmtPct(extracted.top_tenant_income_pct?.value)} confidence={extracted.top_tenant_income_pct?.confidence} />
+            <KV label="Source shrinking?" value={extracted.top_tenant_shrinking?.value === true ? "Yes" : extracted.top_tenant_shrinking?.value === false ? "No" : "—"} confidence={extracted.top_tenant_shrinking?.confidence} />
           </div>
         </aside>
+
       </div>
     </div>
   );
@@ -169,10 +188,11 @@ function BackLink() {
 
 function RecommendationBanner({ recommendation, reason }: { recommendation: Row["recommendation"]; reason: string }) {
   const map = {
-    pursue: { label: "Pursue", tone: "success" as const, sub: "All risk rules cleared." },
-    pursue_with_conditions: { label: "Pursue with conditions", tone: "warning" as const, sub: "Confirm caution items and review unverified figures before bidding." },
-    pass: { label: "Pass", tone: "destructive" as const, sub: "Material risk exposure — recommend declining." },
+    pursue: { label: "Pursue", tone: "success" as const, sub: "All five rules are healthy." },
+    pursue_with_conditions: { label: "Pursue with conditions", tone: "warning" as const, sub: "Resolve high-risk flags and items needing manual review before bidding." },
+    pass: { label: "Pass", tone: "destructive" as const, sub: "Critical risk flagged — recommend declining." },
   };
+
   const cfg = recommendation ? map[recommendation] : null;
   if (!cfg) return null;
 
@@ -226,16 +246,17 @@ function RuleCard({ rule }: { rule: Rule }) {
 
 function statusCfg(s: RuleStatus) {
   switch (s) {
-    case "pass":
-      return { label: "Pass", icon: <CheckCircle2 className="h-4 w-4 text-success" />, bg: "bg-success/15", pill: "bg-success/10 text-success border-success/20" };
-    case "caution":
-      return { label: "Caution", icon: <AlertTriangle className="h-4 w-4 text-warning" />, bg: "bg-warning/20", pill: "bg-warning/15 text-warning border-warning/30" };
-    case "fail":
-      return { label: "Fail", icon: <XCircle className="h-4 w-4 text-destructive" />, bg: "bg-destructive/15", pill: "bg-destructive/10 text-destructive border-destructive/20" };
+    case "healthy":
+      return { label: "Healthy", icon: <CheckCircle2 className="h-4 w-4 text-success" />, bg: "bg-success/15", pill: "bg-success/10 text-success border-success/20" };
+    case "high_risk":
+      return { label: "High Risk", icon: <AlertTriangle className="h-4 w-4 text-warning" />, bg: "bg-warning/20", pill: "bg-warning/15 text-warning border-warning/30" };
+    case "critical_risk":
+      return { label: "Critical Risk", icon: <XCircle className="h-4 w-4 text-destructive" />, bg: "bg-destructive/15", pill: "bg-destructive/10 text-destructive border-destructive/20" };
     case "needs_manual_review":
       return { label: "Needs review", icon: <HelpCircle className="h-4 w-4 text-info" />, bg: "bg-info/15", pill: "bg-info/10 text-info border-info/20" };
   }
 }
+
 
 function KV({ label, value, confidence, bold }: { label: string; value: string; confidence?: string; bold?: boolean }) {
   const isMissing = confidence === "missing" || value === "—" || value === "—/mo";

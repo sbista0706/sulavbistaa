@@ -122,9 +122,9 @@ function DealRow({ row }: { row: Row }) {
         </div>
       </div>
       <div className="hidden items-center gap-1.5 sm:flex">
-        {ruleCounts.pass > 0 && <Pill tone="success">{ruleCounts.pass} pass</Pill>}
-        {ruleCounts.caution > 0 && <Pill tone="warning">{ruleCounts.caution} caution</Pill>}
-        {ruleCounts.fail > 0 && <Pill tone="destructive">{ruleCounts.fail} fail</Pill>}
+        {ruleCounts.healthy > 0 && <Pill tone="success">{ruleCounts.healthy} healthy</Pill>}
+        {ruleCounts.high > 0 && <Pill tone="warning">{ruleCounts.high} high</Pill>}
+        {ruleCounts.critical > 0 && <Pill tone="destructive">{ruleCounts.critical} critical</Pill>}
         {ruleCounts.review > 0 && <Pill tone="info">{ruleCounts.review} review</Pill>}
       </div>
       <RecommendationBadge value={row.recommendation} status={row.status} />
@@ -135,12 +135,13 @@ function DealRow({ row }: { row: Row }) {
 
 function countRules(rules: { status: string }[]) {
   return {
-    pass: rules.filter((r) => r.status === "pass").length,
-    caution: rules.filter((r) => r.status === "caution").length,
-    fail: rules.filter((r) => r.status === "fail").length,
+    healthy: rules.filter((r) => r.status === "healthy").length,
+    high: rules.filter((r) => r.status === "high_risk").length,
+    critical: rules.filter((r) => r.status === "critical_risk").length,
     review: rules.filter((r) => r.status === "needs_manual_review").length,
   };
 }
+
 
 function RecommendationBadge({ value, status }: { value: string | null; status: string }) {
   if (status === "processing") return <Pill tone="muted">Processing…</Pill>;

@@ -142,11 +142,12 @@ function UploadPage() {
       <div className="mt-12 card-base p-6">
         <h2 className="text-sm font-semibold">What Ledger checks</h2>
         <ul className="mt-4 space-y-3 text-sm">
-          <RuleHint label="Debt Service Coverage" detail="NOI ÷ annual debt service. Caution under 1.25x, fail under 1.15x." />
-          <RuleHint label="Occupancy" detail="Pass at 90%+, caution 85–90%, fail under 85%." />
-          <RuleHint label="Going-in Cap Rate" detail="Pass at 6%+, caution 5–6%, fail under 5%." />
-          <RuleHint label="Repair burden" detail="Estimated repair / capex cost as a share of purchase price." />
-          <RuleHint label="Rent gap" detail="In-place rent vs market rent. Large gaps imply an optimistic proforma." />
+          <RuleHint label="Occupancy & Vacancy" detail="High risk if occupancy ≤ 85% with vacancy < 5%. Critical if occupancy < 80% with vacancy > 5%." />
+          <RuleHint label="Debt Service Coverage" detail="Healthy above 1.35x. High risk at or below 1.35x." />
+          <RuleHint label="Going-in Cap Rate" detail="High risk if cap < 5%. Critical if cap < 5% AND vacancy > 10%." />
+          <RuleHint label="Income Concentration" detail="High risk if >25% of income comes from a single tenant/employer. Critical if that source is also shrinking." />
+          <RuleHint label="Deferred CapEx" detail="High risk if deferred capex > 5% of purchase price. Critical if NOI margin is also below the market average." />
+
         </ul>
         <p className="mt-5 rounded-md border border-info/20 bg-info/5 p-3 text-xs text-info">
           If any number can't be extracted with confidence, Ledger marks that rule <span className="font-semibold">needs manual review</span> rather than guessing.
