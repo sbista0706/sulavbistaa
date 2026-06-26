@@ -3,150 +3,230 @@ import { createClient } from "@supabase/supabase-js";
 
 type Confidence = "high" | "low" | "missing";
 
-interface FieldValue {
-  value: number | null;
+interface FieldValue<T = number> {
+  value: T | null;
   confidence: Confidence;
   note?: string;
 }
 
 interface Extracted {
-  property_name: FieldValue & { value: string | null };
+  property_name: FieldValue<string>;
   units: FieldValue;
   purchase_price: FieldValue;
   gross_income: FieldValue;
   operating_expenses: FieldValue;
   noi: FieldValue;
+  noi_margin_pct: FieldValue;
+  market_avg_noi_margin_pct: FieldValue;
   annual_debt_service: FieldValue;
+  dscr: FieldValue;
   occupancy_pct: FieldValue;
+  vacancy_pct: FieldValue;
   avg_actual_rent: FieldValue;
   avg_market_rent: FieldValue;
   cap_rate_pct: FieldValue;
   estimated_repair_cost: FieldValue;
+  deferred_capex: FieldValue;
+  top_tenant_income_pct: FieldValue;
+  top_tenant_name: FieldValue<string>;
+  top_tenant_shrinking: FieldValue<boolean>;
 }
 
-const EXTRACT_PROMPT = `You are a multifamily real-estate underwriter. Read the attached Offering Memorandum (OM) PDF and extract the following fields. For every field, also rate confidence as "high" (clearly stated in the doc), "low" (inferred or partially stated), or "missing" (not findable). Do NOT guess. If you can't find a number, return null with confidence "missing".
+const EXTRACT_PROMPT = `You are a multifamily real-estate underwriter. Read the attached Offering Memorandum (OM) PDF and extract the fields below. For every field also rate confidence:
+- "high" — value is clearly stated in the doc
+- "low"  — inferred or partially stated
+- "missing" — not findable
 
-Return STRICT JSON matching this schema (no markdown, no prose):
+Do NOT guess. If you cannot find a value, return null with confidence "missing".
+
+Return STRICT JSON only (no markdown, no prose), matching this exact shape:
 
 {
-  "property_name": {"value": string|null, "confidence": "high"|"low"|"missing"},
+  "property_name": {"value": string|null, "confidence": "..."},
   "units": {"value": number|null, "confidence": "..."},
   "purchase_price": {"value": number|null, "confidence": "..."},
   "gross_income": {"value": number|null, "confidence": "..."},
   "operating_expenses": {"value": number|null, "confidence": "..."},
   "noi": {"value": number|null, "confidence": "..."},
-  "annual_debt_service": {"value": number|null, "confidence": "...", "note": "if assumed from a loan-quote / proforma, say so"},
+  "noi_margin_pct": {"value": number|null, "confidence": "...", "note": "NOI / gross income, as a percentage"},
+  "market_avg_noi_margin_pct": {"value": number|null, "confidence": "...", "note": "market/submarket average NOI margin if cited, else missing"},
+  "annual_debt_service": {"value": number|null, "confidence": "..."},
+  "dscr": {"value": number|null, "confidence": "...", "note": "stated DSCR if cited"},
   "occupancy_pct": {"value": number|null, "confidence": "..."},
+  "vacancy_pct": {"value": number|null, "confidence": "...", "note": "physical or economic vacancy as cited"},
   "avg_actual_rent": {"value": number|null, "confidence": "...", "note": "monthly avg in-place rent"},
   "avg_market_rent": {"value": number|null, "confidence": "...", "note": "monthly avg market/proforma rent"},
   "cap_rate_pct": {"value": number|null, "confidence": "..."},
-  "estimated_repair_cost": {"value": number|null, "confidence": "...", "note": "deferred maintenance + value-add capex"}
+  "estimated_repair_cost": {"value": number|null, "confidence": "...", "note": "total repairs/value-add capex budget"},
+  "deferred_capex": {"value": number|null, "confidence": "...", "note": "deferred maintenance / immediate capex needed"},
+  "top_tenant_income_pct": {"value": number|null, "confidence": "...", "note": "% of total rental income from the single largest tenant OR single largest employer/industry concentration in the submarket. For workforce multifamily, this is usually the largest employer concentration of the resident base."},
+  "top_tenant_name": {"value": string|null, "confidence": "...", "note": "name of that tenant / employer / industry"},
+  "top_tenant_shrinking": {"value": boolean|null, "confidence": "...", "note": "true ONLY if the OM explicitly indicates that tenant / employer / industry is shrinking, laying off, declining, or losing market share. Otherwise false. If silent, missing."}
 }
 
-All money in USD whole dollars. Occupancy and cap rate as percentage numbers (e.g. 92.5, not 0.925).`;
+All money in USD whole dollars. Occupancy, vacancy, cap rate, DSCR margin all as percentage numbers (e.g. 92.5 not 0.925). DSCR is a ratio number (e.g. 1.30).`;
+
+type RiskStatus = "healthy" | "high_risk" | "critical_risk" | "needs_manual_review";
 
 interface RiskResult {
   id: string;
   label: string;
-  status: "pass" | "caution" | "fail" | "needs_manual_review";
+  status: RiskStatus;
   detail: string;
   metric?: string;
-  threshold?: string;
+  threshold: string;
 }
 
 function evalRisks(d: Extracted): RiskResult[] {
   const results: RiskResult[] = [];
-  const ok = (f: FieldValue | undefined) => f && f.value !== null && f.confidence !== "missing";
+  const ok = <T,>(f: FieldValue<T> | undefined) => !!(f && f.value !== null && f.value !== undefined && f.confidence !== "missing");
 
-  // 1. DSCR
-  if (ok(d.noi) && ok(d.annual_debt_service) && (d.annual_debt_service.value as number) > 0) {
-    const dscr = (d.noi.value as number) / (d.annual_debt_service.value as number);
-    const status = dscr >= 1.25 ? "pass" : dscr >= 1.15 ? "caution" : "fail";
-    results.push({
-      id: "dscr",
-      label: "Debt Service Coverage Ratio",
-      status,
-      metric: dscr.toFixed(2) + "x",
-      threshold: "≥ 1.25x pass · 1.15–1.25x caution · < 1.15x fail",
-      detail: `NOI of ${fmtMoney(d.noi.value as number)} against annual debt service of ${fmtMoney(d.annual_debt_service.value as number)}.`,
-    });
-  } else {
-    results.push({
-      id: "dscr",
-      label: "Debt Service Coverage Ratio",
-      status: "needs_manual_review",
-      threshold: "≥ 1.25x",
-      detail: "NOI or annual debt service could not be confidently extracted.",
-    });
+  // 1. Occupancy + Vacancy
+  {
+    const occOk = ok(d.occupancy_pct);
+    const vacOk = ok(d.vacancy_pct);
+    if (!occOk && !vacOk) {
+      results.push(review("occupancy", "Occupancy & Vacancy",
+        "Neither occupancy nor vacancy was confidently stated in the OM.",
+        "L1: occ ≤ 85% & vac < 5%  ·  L2: occ < 80% & vac > 5%"));
+    } else {
+      const occ = d.occupancy_pct.value as number | null;
+      const vac = (d.vacancy_pct.value as number | null) ?? (occ !== null ? 100 - occ : null);
+      let status: RiskStatus = "healthy";
+      let detail = `Occupancy ${occ !== null ? occ.toFixed(1) + "%" : "n/a"}, vacancy ${vac !== null ? vac.toFixed(1) + "%" : "n/a"}.`;
+      if (occ !== null && vac !== null) {
+        if (occ < 80 && vac > 5) { status = "critical_risk"; detail += " Occupancy below 80% with vacancy above 5%."; }
+        else if (occ <= 85 && vac < 5) { status = "high_risk"; detail += " Soft occupancy with minimal slack in vacancy."; }
+        else { detail += " Within healthy band."; }
+      } else {
+        status = "needs_manual_review";
+        detail = "Only partial occupancy/vacancy data — confirm both figures.";
+      }
+      results.push({
+        id: "occupancy", label: "Occupancy & Vacancy", status, detail,
+        metric: `${occ !== null ? occ.toFixed(1) + "%" : "—"} occ · ${vac !== null ? vac.toFixed(1) + "%" : "—"} vac`,
+        threshold: "L1: occ ≤ 85% & vac < 5%  ·  L2: occ < 80% & vac > 5%",
+      });
+    }
   }
 
-  // 2. Occupancy
-  if (ok(d.occupancy_pct)) {
-    const occ = d.occupancy_pct.value as number;
-    const status = occ >= 90 ? "pass" : occ >= 85 ? "caution" : "fail";
-    results.push({
-      id: "occupancy",
-      label: "Occupancy",
-      status,
-      metric: occ.toFixed(1) + "%",
-      threshold: "≥ 90% pass · 85–90% caution · < 85% fail",
-      detail: `Reported occupancy at ${occ.toFixed(1)}%.`,
-    });
-  } else {
-    results.push({ id: "occupancy", label: "Occupancy", status: "needs_manual_review", threshold: "≥ 90%", detail: "Occupancy not confidently stated in OM." });
+  // 2. DSCR — healthy if > 1.35, else high risk
+  {
+    let dscr: number | null = null;
+    if (ok(d.dscr)) dscr = d.dscr.value as number;
+    else if (ok(d.noi) && ok(d.annual_debt_service) && (d.annual_debt_service.value as number) > 0) {
+      dscr = (d.noi.value as number) / (d.annual_debt_service.value as number);
+    }
+    if (dscr === null) {
+      results.push(review("dscr", "Debt Service Coverage Ratio",
+        "DSCR not stated and NOI or annual debt service could not be confidently extracted.",
+        "L1: > 1.35x healthy  ·  L2: ≤ 1.35x high risk"));
+    } else {
+      const status: RiskStatus = dscr > 1.35 ? "healthy" : "high_risk";
+      results.push({
+        id: "dscr", label: "Debt Service Coverage Ratio", status,
+        metric: dscr.toFixed(2) + "x",
+        threshold: "L1: > 1.35x healthy  ·  L2: ≤ 1.35x high risk",
+        detail: status === "healthy"
+          ? "DSCR clears the 1.35x healthy threshold."
+          : "DSCR is at or below 1.35x — thin coverage against debt service.",
+      });
+    }
   }
 
-  // 3. Cap rate
-  if (ok(d.cap_rate_pct)) {
-    const cap = d.cap_rate_pct.value as number;
-    const status = cap >= 6 ? "pass" : cap >= 5 ? "caution" : "fail";
-    results.push({
-      id: "cap_rate",
-      label: "Going-in Cap Rate",
-      status,
-      metric: cap.toFixed(2) + "%",
-      threshold: "≥ 6% pass · 5–6% caution · < 5% fail",
-      detail: `Cap rate at the listed purchase price.`,
-    });
-  } else {
-    results.push({ id: "cap_rate", label: "Going-in Cap Rate", status: "needs_manual_review", threshold: "≥ 6%", detail: "Cap rate not confidently stated." });
+  // 3. Cap rate — high if < 5%; critical if < 5% AND vacancy > 10%
+  {
+    if (!ok(d.cap_rate_pct)) {
+      results.push(review("cap_rate", "Going-in Cap Rate",
+        "Cap rate not confidently stated.",
+        "L1: cap < 5%  ·  L2: cap < 5% & vacancy > 10%"));
+    } else {
+      const cap = d.cap_rate_pct.value as number;
+      const occ = ok(d.occupancy_pct) ? (d.occupancy_pct.value as number) : null;
+      const vac = ok(d.vacancy_pct) ? (d.vacancy_pct.value as number) : (occ !== null ? 100 - occ : null);
+      let status: RiskStatus = "healthy";
+      let detail = `Cap rate ${cap.toFixed(2)}%.`;
+      if (cap < 5) {
+        if (vac !== null && vac > 10) { status = "critical_risk"; detail += ` Compressed yield combined with ${vac.toFixed(1)}% vacancy.`; }
+        else if (vac === null) { status = "high_risk"; detail += " Compressed yield; vacancy not confirmed — re-check before bidding."; }
+        else { status = "high_risk"; detail += " Yield below 5% — pricing aggressive relative to risk."; }
+      } else {
+        detail += " At or above the 5% threshold.";
+      }
+      results.push({
+        id: "cap_rate", label: "Going-in Cap Rate", status, detail,
+        metric: cap.toFixed(2) + "%",
+        threshold: "L1: cap < 5%  ·  L2: cap < 5% & vacancy > 10%",
+      });
+    }
   }
 
-  // 4. Repair cost burden
-  if (ok(d.estimated_repair_cost) && ok(d.purchase_price) && (d.purchase_price.value as number) > 0) {
-    const ratio = ((d.estimated_repair_cost.value as number) / (d.purchase_price.value as number)) * 100;
-    const status = ratio <= 5 ? "pass" : ratio <= 10 ? "caution" : "fail";
-    results.push({
-      id: "repair_burden",
-      label: "Repair Cost vs. Purchase Price",
-      status,
-      metric: ratio.toFixed(1) + "%",
-      threshold: "≤ 5% pass · 5–10% caution · > 10% fail",
-      detail: `Repair budget ${fmtMoney(d.estimated_repair_cost.value as number)} against price ${fmtMoney(d.purchase_price.value as number)}.`,
-    });
-  } else {
-    results.push({ id: "repair_burden", label: "Repair Cost vs. Purchase Price", status: "needs_manual_review", threshold: "≤ 5%", detail: "Repair budget or purchase price not confidently stated." });
+  // 4. Tenant / employer concentration
+  {
+    if (!ok(d.top_tenant_income_pct)) {
+      results.push(review("tenant_concentration", "Income Concentration",
+        "Tenant or employer concentration not confidently stated in the OM.",
+        "L1: >25% from one source  ·  L2: that source is shrinking"));
+    } else {
+      const pct = d.top_tenant_income_pct.value as number;
+      const who = ok(d.top_tenant_name) ? (d.top_tenant_name.value as string) : "single source";
+      const shrinkingKnown = d.top_tenant_shrinking && d.top_tenant_shrinking.confidence !== "missing";
+      const shrinking = shrinkingKnown && d.top_tenant_shrinking.value === true;
+      let status: RiskStatus = "healthy";
+      let detail = `${pct.toFixed(1)}% of income tied to ${who}.`;
+      if (pct > 25) {
+        if (shrinking) { status = "critical_risk"; detail += " OM signals that source is contracting."; }
+        else if (!shrinkingKnown) { status = "high_risk"; detail += " Trajectory of that source not confirmed — verify employer/industry health."; }
+        else { status = "high_risk"; detail += " Single source carries the rent roll."; }
+      } else {
+        detail += " Below 25% concentration threshold.";
+      }
+      results.push({
+        id: "tenant_concentration", label: "Income Concentration", status, detail,
+        metric: pct.toFixed(1) + "%",
+        threshold: "L1: >25% from one source  ·  L2: that source is shrinking",
+      });
+    }
   }
 
-  // 5. Rent gap (in-place vs market)
-  if (ok(d.avg_actual_rent) && ok(d.avg_market_rent) && (d.avg_market_rent.value as number) > 0) {
-    const gap = (((d.avg_market_rent.value as number) - (d.avg_actual_rent.value as number)) / (d.avg_market_rent.value as number)) * 100;
-    // a small or moderate loss-to-lease is fine; a huge gap implies optimistic proforma
-    const abs = Math.abs(gap);
-    const status = abs <= 5 ? "pass" : abs <= 15 ? "caution" : "fail";
-    results.push({
-      id: "rent_gap",
-      label: "In-place Rent vs Market Rent",
-      status,
-      metric: gap.toFixed(1) + "% gap",
-      threshold: "≤ 5% pass · 5–15% caution · > 15% fail",
-      detail: `Actual rent ${fmtMoney(d.avg_actual_rent.value as number)}/mo vs market ${fmtMoney(d.avg_market_rent.value as number)}/mo.`,
-    });
-  } else {
-    results.push({ id: "rent_gap", label: "In-place Rent vs Market Rent", status: "needs_manual_review", threshold: "within 5%", detail: "Rent roll or market comps not confidently stated." });
+  // 5. Deferred capex vs purchase price; critical if also NOI margin below market
+  {
+    const capex = ok(d.deferred_capex) ? (d.deferred_capex.value as number)
+                : ok(d.estimated_repair_cost) ? (d.estimated_repair_cost.value as number) : null;
+    if (capex === null || !ok(d.purchase_price) || (d.purchase_price.value as number) <= 0) {
+      results.push(review("capex", "Deferred CapEx vs Price",
+        "Deferred capex or purchase price not confidently stated.",
+        "L1: capex > 5% of price  ·  L2: also NOI margin below market"));
+    } else {
+      const price = d.purchase_price.value as number;
+      const ratio = (capex / price) * 100;
+      const noiM = ok(d.noi_margin_pct) ? (d.noi_margin_pct.value as number) : null;
+      const mktM = ok(d.market_avg_noi_margin_pct) ? (d.market_avg_noi_margin_pct.value as number) : null;
+      const noiBelowMarket = noiM !== null && mktM !== null && noiM < mktM;
+      const marginCheckKnown = noiM !== null && mktM !== null;
+
+      let status: RiskStatus = "healthy";
+      let detail = `Deferred capex ${fmtMoney(capex)} on price ${fmtMoney(price)} (${ratio.toFixed(1)}%).`;
+      if (ratio > 5) {
+        if (noiBelowMarket) { status = "critical_risk"; detail += ` NOI margin ${noiM!.toFixed(1)}% vs market ${mktM!.toFixed(1)}% — under-earning a needy asset.`; }
+        else if (!marginCheckKnown) { status = "high_risk"; detail += " NOI margin vs market not confirmed — verify before assuming yield."; }
+        else { status = "high_risk"; detail += " Heavy capex burden, but NOI margin holds up."; }
+      } else {
+        detail += " Within the 5% comfort band.";
+      }
+      results.push({
+        id: "capex", label: "Deferred CapEx vs Price", status, detail,
+        metric: ratio.toFixed(1) + "%",
+        threshold: "L1: capex > 5% of price  ·  L2: also NOI margin below market",
+      });
+    }
   }
 
   return results;
+}
+
+function review(id: string, label: string, detail: string, threshold: string): RiskResult {
+  return { id, label, status: "needs_manual_review", detail, threshold };
 }
 
 function fmtMoney(n: number): string {
@@ -154,17 +234,21 @@ function fmtMoney(n: number): string {
 }
 
 function decideRecommendation(rs: RiskResult[]): { recommendation: "pursue" | "pursue_with_conditions" | "pass"; reason: string } {
-  const fails = rs.filter((r) => r.status === "fail");
-  const cautions = rs.filter((r) => r.status === "caution");
+  const critical = rs.filter((r) => r.status === "critical_risk");
+  const high = rs.filter((r) => r.status === "high_risk");
   const reviews = rs.filter((r) => r.status === "needs_manual_review");
 
-  if (fails.length >= 2) return { recommendation: "pass", reason: `${fails.length} risk rules failed outright.` };
-  if (fails.length === 1) return { recommendation: "pass", reason: `${fails[0].label} failed — material downside risk.` };
-  if (cautions.length + reviews.length === 0) return { recommendation: "pursue", reason: "All risk rules cleared." };
-  return {
-    recommendation: "pursue_with_conditions",
-    reason: `${cautions.length} caution${cautions.length === 1 ? "" : "s"} and ${reviews.length} item${reviews.length === 1 ? "" : "s"} needing manual review.`,
-  };
+  if (critical.length >= 1) {
+    const which = critical.map((r) => r.label).join(", ");
+    return { recommendation: "pass", reason: `Critical risk flagged on ${which}.` };
+  }
+  if (high.length + reviews.length === 0) {
+    return { recommendation: "pursue", reason: "All five rules are healthy." };
+  }
+  const parts: string[] = [];
+  if (high.length) parts.push(`${high.length} high-risk flag${high.length === 1 ? "" : "s"}`);
+  if (reviews.length) parts.push(`${reviews.length} item${reviews.length === 1 ? "" : "s"} needing manual review`);
+  return { recommendation: "pursue_with_conditions", reason: parts.join(" and ") + "." };
 }
 
 export const analyzeOM = createServerFn({ method: "POST" })
