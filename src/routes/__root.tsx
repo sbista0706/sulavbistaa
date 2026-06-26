@@ -135,13 +135,6 @@ function AppHeader() {
             Compare
           </Link>
           <Link
-            to="/settings"
-            className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
-            activeProps={{ className: "rounded-md px-3 py-1.5 text-sm bg-secondary text-foreground font-medium" }}
-          >
-            Settings
-          </Link>
-          <Link
             to="/upload"
             className="rounded-md bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
           >
