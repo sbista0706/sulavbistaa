@@ -17,6 +17,7 @@ import {
 import { formatMetric } from "@/lib/screening/format";
 import { Markdown } from "@/components/markdown";
 import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Loader2, FileText, RefreshCw, ClipboardList, Download } from "lucide-react";
+import { generateReportPdf } from "@/lib/report-pdf";
 
 export const Route = createFileRoute("/analysis/$id")({
   head: () => ({
@@ -178,7 +179,7 @@ function AnalysisPage() {
         </div>
       </div>
 
-      <RecommendationBanner recommendation={data.recommendation} reason={decision?.reason ?? ""} excluded={isExcluded} reportPath={data.report_path} />
+      <RecommendationBanner row={data} reason={decision?.reason ?? ""} excluded={isExcluded} />
 
       <HeroMetrics metrics={metrics} rules={rules} />
 
@@ -338,7 +339,8 @@ function BackLink() {
   );
 }
 
-function RecommendationBanner({ recommendation, reason, excluded, reportPath }: { recommendation: Recommendation | null; reason: string; excluded: boolean; reportPath: string | null }) {
+function RecommendationBanner({ row, reason, excluded }: { row: Row; reason: string; excluded: boolean }) {
+  const recommendation = row.recommendation;
   const map: Record<Recommendation, { label: string; tone: "success" | "warning" | "destructive"; sub: string }> = {
     pursue: { label: "Pursue", tone: "success", sub: "All risk rules pass." },
     pursue_with_conditions: { label: "Pursue with conditions", tone: "warning", sub: "Resolve high-risk flags and items needing review before bidding." },
@@ -357,6 +359,25 @@ function RecommendationBanner({ recommendation, reason, excluded, reportPath }: 
     warning: "text-warning",
     destructive: "text-destructive",
   };
+  const btnTone: Record<string, string> = {
+    success: "bg-success text-success-foreground",
+    warning: "bg-warning text-warning-foreground",
+    destructive: "bg-destructive text-destructive-foreground",
+  };
+
+  const onDownload = () => generateReportPdf({
+    file_name: row.file_name,
+    property_name: row.property_name,
+    property_subtype: row.property_subtype,
+    property_type: row.property_type,
+    location: row.location,
+    created_at: row.created_at,
+    recommendation: row.recommendation,
+    metrics: row.metrics,
+    type_metrics: row.type_metrics,
+    risk_results: row.risk_results,
+    verify_items: row.verify_items,
+  });
 
   return (
     <div className={`mt-8 rounded-xl border p-6 ${toneClasses[cfg.tone]}`}>
@@ -366,18 +387,17 @@ function RecommendationBanner({ recommendation, reason, excluded, reportPath }: 
           <div className={`font-display mt-1 text-4xl ${labelTone[cfg.tone]}`}>{cfg.label}</div>
           <p className="mt-2 max-w-2xl text-sm text-foreground/80">{reason || cfg.sub}</p>
         </div>
-        {recommendation === "pursue" && reportPath && (
-          <button
-            onClick={() => downloadReport(reportPath)}
-            className="inline-flex shrink-0 items-center gap-2 rounded-md bg-success px-4 py-2.5 text-sm font-medium text-success-foreground shadow-card transition hover:opacity-90"
-          >
-            <Download className="h-4 w-4" /> Download report
-          </button>
-        )}
+        <button
+          onClick={onDownload}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium shadow-card transition hover:opacity-90 ${btnTone[cfg.tone]}`}
+        >
+          <Download className="h-4 w-4" /> Download report
+        </button>
       </div>
     </div>
   );
 }
+
 
 function RuleCard({ rule }: { rule: RiskRuleResult }) {
   const cfg = statusCfg(rule.status);
