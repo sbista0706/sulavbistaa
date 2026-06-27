@@ -2,7 +2,7 @@
 const W = (id: string, w = 2400) =>
   `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
 
-// Manhattan skyline, aerial daytime — primary hero.
-export const CITY_HERO = W("1534430480872-3498386e7856");
-// Manhattan at golden hour — secondary accent (empty states, upload).
+// Lower Manhattan at dusk — dark towers, warm gold city lights — primary hero.
+export const CITY_HERO = W("1496588152823-86ff7695e68f");
+// Manhattan at golden hour — secondary accent (empty states).
 export const CITY_SUNSET = W("1485871981521-5b1fd3805eee", 1600);
