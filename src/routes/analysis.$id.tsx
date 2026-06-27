@@ -62,6 +62,11 @@ function resolveFamily(row: Row): PropertyFamily | null {
   return null;
 }
 
+async function downloadReport(reportPath: string): Promise<void> {
+  const { data, error } = await supabase.storage.from("reports").createSignedUrl(reportPath, 120);
+  if (!error && data?.signedUrl) window.open(data.signedUrl, "_blank");
+}
+
 function AnalysisPage() {
   const { id } = Route.useParams();
   const { data, isLoading, refetch } = useQuery({
@@ -173,7 +178,7 @@ function AnalysisPage() {
         </div>
       </div>
 
-      <RecommendationBanner recommendation={data.recommendation} reason={decision?.reason ?? ""} excluded={isExcluded} />
+      <RecommendationBanner recommendation={data.recommendation} reason={decision?.reason ?? ""} excluded={isExcluded} reportPath={data.report_path} />
 
       <HeroMetrics metrics={metrics} rules={rules} />
 
@@ -298,8 +303,7 @@ function ReportCard({ reportText, reportPath }: { reportText: string; reportPath
     if (!reportPath) return;
     setDownloading(true);
     try {
-      const { data, error } = await supabase.storage.from("reports").createSignedUrl(reportPath, 120);
-      if (!error && data?.signedUrl) window.open(data.signedUrl, "_blank");
+      await downloadReport(reportPath);
     } finally {
       setDownloading(false);
     }
@@ -334,7 +338,7 @@ function BackLink() {
   );
 }
 
-function RecommendationBanner({ recommendation, reason, excluded }: { recommendation: Recommendation | null; reason: string; excluded: boolean }) {
+function RecommendationBanner({ recommendation, reason, excluded, reportPath }: { recommendation: Recommendation | null; reason: string; excluded: boolean; reportPath: string | null }) {
   const map: Record<Recommendation, { label: string; tone: "success" | "warning" | "destructive"; sub: string }> = {
     pursue: { label: "Pursue", tone: "success", sub: "All risk rules pass." },
     pursue_with_conditions: { label: "Pursue with conditions", tone: "warning", sub: "Resolve high-risk flags and items needing review before bidding." },
@@ -356,9 +360,21 @@ function RecommendationBanner({ recommendation, reason, excluded }: { recommenda
 
   return (
     <div className={`mt-8 rounded-xl border p-6 ${toneClasses[cfg.tone]}`}>
-      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Recommendation</div>
-      <div className={`font-display mt-1 text-4xl ${labelTone[cfg.tone]}`}>{cfg.label}</div>
-      <p className="mt-2 text-sm text-foreground/80">{reason || cfg.sub}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Recommendation</div>
+          <div className={`font-display mt-1 text-4xl ${labelTone[cfg.tone]}`}>{cfg.label}</div>
+          <p className="mt-2 max-w-2xl text-sm text-foreground/80">{reason || cfg.sub}</p>
+        </div>
+        {recommendation === "pursue" && reportPath && (
+          <button
+            onClick={() => downloadReport(reportPath)}
+            className="inline-flex shrink-0 items-center gap-2 rounded-md bg-success px-4 py-2.5 text-sm font-medium text-success-foreground shadow-card transition hover:opacity-90"
+          >
+            <Download className="h-4 w-4" /> Download report
+          </button>
+        )}
+      </div>
     </div>
   );
 }
