@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS public.risk_settings (
 ALTER TABLE public.risk_settings ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.risk_settings TO authenticated;
 
+DROP POLICY IF EXISTS "Owners manage their risk settings" ON public.risk_settings;
 CREATE POLICY "Owners manage their risk settings"
   ON public.risk_settings
   FOR ALL
@@ -70,21 +71,36 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Path convention enforced by RLS: {bucket}/{user_id}/{analysis_id}/{filename}
 -- so the first path segment must equal the caller's uid.
+DROP POLICY IF EXISTS "Owners read their files" ON storage.objects;
 CREATE POLICY "Owners read their files"
   ON storage.objects FOR SELECT TO authenticated
   USING (bucket_id IN ('oms', 'reports') AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Owners upload their files" ON storage.objects;
 CREATE POLICY "Owners upload their files"
   ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (bucket_id IN ('oms', 'reports') AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Owners update their files" ON storage.objects;
 CREATE POLICY "Owners update their files"
   ON storage.objects FOR UPDATE TO authenticated
   USING (bucket_id IN ('oms', 'reports') AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Owners delete their files" ON storage.objects;
 CREATE POLICY "Owners delete their files"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id IN ('oms', 'reports') AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- 4. Realtime: let the app follow status pending -> processing -> complete -----
-ALTER PUBLICATION supabase_realtime ADD TABLE public.analyses;
+-- Idempotent: only add the table to the publication if it isn't already there.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'analyses'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.analyses;
+  END IF;
+END $$;

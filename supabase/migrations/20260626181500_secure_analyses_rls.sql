@@ -12,7 +12,7 @@
 
 -- 1. Ownership column ---------------------------------------------------------
 ALTER TABLE public.analyses
-  ADD COLUMN user_id uuid DEFAULT auth.uid()
+  ADD COLUMN IF NOT EXISTS user_id uuid DEFAULT auth.uid()
     REFERENCES auth.users (id) ON DELETE CASCADE;
 
 -- Legacy rows have no owner and were the globally-readable leak; drop them so
@@ -33,18 +33,21 @@ DROP POLICY IF EXISTS "Anyone can update analyses" ON public.analyses;
 REVOKE SELECT, INSERT, UPDATE ON public.analyses FROM anon;
 
 -- 4. Owner-scoped policies ----------------------------------------------------
+DROP POLICY IF EXISTS "Owners can view their analyses" ON public.analyses;
 CREATE POLICY "Owners can view their analyses"
   ON public.analyses
   FOR SELECT
   TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Owners can insert their analyses" ON public.analyses;
 CREATE POLICY "Owners can insert their analyses"
   ON public.analyses
   FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Owners can update their analyses" ON public.analyses;
 CREATE POLICY "Owners can update their analyses"
   ON public.analyses
   FOR UPDATE
