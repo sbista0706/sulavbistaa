@@ -1,4 +1,4 @@
-# Ledger ⇄ n8n contract (Phase 1)
+# Property Pulse Check ⇄ n8n contract (Phase 1)
 
 The app is a skin. It uploads the OM, creates a `pending` row, and pings n8n.
 **n8n owns all processing** and writes results back to Supabase; the UI follows

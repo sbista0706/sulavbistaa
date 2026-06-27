@@ -1,4 +1,4 @@
-# Ledger — backend setup checklist
+# Property Pulse Check — backend setup checklist
 
 The app is a skin over Supabase; all OM processing runs in n8n (OpenRouter +
 Gotenberg). Follow these once to wire the live pipeline. Secrets never go in
