@@ -1,5 +1,5 @@
 {
-  "name": "Ledger — OM analyze (Phase 1+2)",
+  "name": "Property Pulse Check — OM analyze (Phase 1+2)",
   "nodes": [
     {
       "parameters": { "httpMethod": "POST", "path": "ledger-analyze", "options": {} },
@@ -88,7 +88,7 @@
         ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"model\": \"google/gemini-2.0-flash-exp:free\", \"response_format\": { \"type\": \"json_object\" }, \"messages\": [ { \"role\": \"system\", \"content\": \"You are a CRE underwriting analyst. Return ONLY JSON per the Ledger schema (CONTRACT.md §4). Use null for anything not stated; never guess. Include a confidence (high|low|missing) per metric.\" }, { \"role\": \"user\", \"content\": $('Extract OM text').first().json.text } ] } }}",
+        "jsonBody": "={{ { \"model\": \"google/gemini-2.0-flash-exp:free\", \"response_format\": { \"type\": \"json_object\" }, \"messages\": [ { \"role\": \"system\", \"content\": \"You are a CRE underwriting analyst. Return ONLY JSON per the Property Pulse Check schema (CONTRACT.md §4). Use null for anything not stated; never guess. Include a confidence (high|low|missing) per metric.\" }, { \"role\": \"user\", \"content\": $('Extract OM text').first().json.text } ] } }}",
         "options": {}
       },
       "id": "node-openrouter",
@@ -227,7 +227,7 @@
     },
     {
       "parameters": {
-        "content": "## Ledger — OM analyze (Phase 1+2)\nWebhook → verify secret → mark processing → download → extract text → OpenRouter (type+metrics) → Score risk → Excluded?\n  • excluded → Write back (no report)\n  • else → OpenRouter report → Build HTML → HTML→PDF (Gotenberg) → Upload report → Attach → Write back\n\nEnv / credentials to set:\n- SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (server-side only)\n- OPENROUTER_API_KEY\n- GOTENBERG_URL (free, self-hostable HTML→PDF; or swap for puppeteer/HTML-to-PDF API)\n- N8N_WEBHOOK_SECRET (matches the app)\n\nPaste the matching n8n/*.js into the three Code nodes.\nTODO 1.5: OCR fallback when Extract OM text is empty (scanned PDFs) → vision model.\nFull spec: n8n/CONTRACT.md",
+        "content": "## Property Pulse Check — OM analyze (Phase 1+2)\nWebhook → verify secret → mark processing → download → extract text → OpenRouter (type+metrics) → Score risk → Excluded?\n  • excluded → Write back (no report)\n  • else → OpenRouter report → Build HTML → HTML→PDF (Gotenberg) → Upload report → Attach → Write back\n\nEnv / credentials to set:\n- SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (server-side only)\n- OPENROUTER_API_KEY\n- GOTENBERG_URL (free, self-hostable HTML→PDF; or swap for puppeteer/HTML-to-PDF API)\n- N8N_WEBHOOK_SECRET (matches the app)\n\nPaste the matching n8n/*.js into the three Code nodes.\nTODO 1.5: OCR fallback when Extract OM text is empty (scanned PDFs) → vision model.\nFull spec: n8n/CONTRACT.md",
         "height": 360,
         "width": 440
       },

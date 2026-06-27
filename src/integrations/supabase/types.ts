@@ -35,7 +35,6 @@ export type Database = {
           storage_path: string | null
           type_detected_by: string | null
           type_metrics: Json | null
-          updated_at: string
           verify_items: Json | null
         }
         Insert: {
@@ -58,7 +57,6 @@ export type Database = {
           storage_path?: string | null
           type_detected_by?: string | null
           type_metrics?: Json | null
-          updated_at?: string
           verify_items?: Json | null
         }
         Update: {
@@ -81,29 +79,7 @@ export type Database = {
           storage_path?: string | null
           type_detected_by?: string | null
           type_metrics?: Json | null
-          updated_at?: string
           verify_items?: Json | null
-        }
-        Relationships: []
-      }
-      risk_settings: {
-        Row: {
-          property_type: string
-          thresholds: Json
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          property_type: string
-          thresholds: Json
-          updated_at?: string
-          user_id?: string
-        }
-        Update: {
-          property_type?: string
-          thresholds?: Json
-          updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
