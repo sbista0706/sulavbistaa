@@ -17,6 +17,7 @@ import {
 import { formatMetric } from "@/lib/screening/format";
 import { Markdown } from "@/components/markdown";
 import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, HelpCircle, Loader2, FileText, RefreshCw, ClipboardList, Download } from "lucide-react";
+import { generateReportPdf } from "@/lib/report-pdf";
 
 export const Route = createFileRoute("/analysis/$id")({
   head: () => ({
