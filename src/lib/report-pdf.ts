@@ -246,7 +246,7 @@ export function generateReportPdf(data: ReportData): void {
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(
-      `Ledger screening report · Generated ${new Date().toLocaleString()} · Page ${i} of ${pageCount}`,
+      `Property Pulse Check screening report · Generated ${new Date().toLocaleString()} · Page ${i} of ${pageCount}`,
       pageW / 2,
       pageH - 24,
       { align: "center" },

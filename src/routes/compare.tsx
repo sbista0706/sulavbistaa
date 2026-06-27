@@ -30,7 +30,7 @@ import { GitCompareArrows, Layers } from "lucide-react";
 export const Route = createFileRoute("/compare")({
   head: () => ({
     meta: [
-      { title: "Compare deals — Ledger" },
+      { title: "Compare deals — Property Pulse Check" },
       { name: "description", content: "Side-by-side comparison of screened deals — like-with-like or on universal metrics." },
     ],
   }),

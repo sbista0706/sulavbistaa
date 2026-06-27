@@ -22,7 +22,7 @@ import { generateReportPdf } from "@/lib/report-pdf";
 export const Route = createFileRoute("/analysis/$id")({
   head: () => ({
     meta: [
-      { title: "Risk results — Ledger" },
+      { title: "Risk results — Property Pulse Check" },
       { name: "description", content: "Risk-rule results, extracted metrics and recommendation for an uploaded OM." },
     ],
   }),

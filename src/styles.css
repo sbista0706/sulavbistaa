@@ -74,7 +74,7 @@
   --muted: oklch(0.96 0.008 250);
   --muted-foreground: oklch(0.5 0.02 250);
 
-  /* Accent: ledger gold */
+  /* Accent: pulse gold */
   --accent: oklch(0.78 0.13 75);
   --accent-foreground: oklch(0.22 0.04 60);
 

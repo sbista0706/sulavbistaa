@@ -9,7 +9,7 @@ import { ArrowUpRight, FileText, Plus, TrendingUp, AlertTriangle, XCircle, Check
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Ledger" },
+      { title: "Dashboard — Property Pulse Check" },
       { name: "description", content: "Your commercial real estate OM screenings, with risk and recommendation at a glance." },
     ],
   }),
@@ -62,7 +62,7 @@ function Dashboard() {
             Underwrite every deal in seconds.
           </h1>
           <p className="mt-4 max-w-xl text-sm text-white/85 sm:text-base animate-in fade-in slide-in-from-bottom-3 duration-700">
-            Upload an Offering Memorandum — Ledger extracts the metrics, screens the risk, and returns a
+            Upload an Offering Memorandum — Property Pulse Check extracts the metrics, screens the risk, and returns a
             <span className="font-medium text-white"> pursue</span> verdict with a full report, or
             <span className="font-medium text-white"> excludes</span> it. Upload several to compare investments.
           </p>

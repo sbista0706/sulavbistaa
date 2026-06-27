@@ -66,13 +66,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Ledger — Multifamily OM Risk Screening" },
+      { title: "Property Pulse Check — Multifamily OM Risk Screening" },
       { name: "description", content: "Upload a multifamily Offering Memorandum and get a 5-rule risk screen with a pursue / pursue-with-conditions / pass recommendation." },
-      { property: "og:title", content: "Ledger — Multifamily OM Risk Screening" },
+      { property: "og:title", content: "Property Pulse Check — Multifamily OM Risk Screening" },
       { property: "og:description", content: "Upload a multifamily Offering Memorandum and get a 5-rule risk screen with a pursue / pursue-with-conditions / pass recommendation." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Ledger — Multifamily OM Risk Screening" },
+      { name: "twitter:title", content: "Property Pulse Check — Multifamily OM Risk Screening" },
       { name: "twitter:description", content: "Upload a multifamily Offering Memorandum and get a 5-rule risk screen with a pursue / pursue-with-conditions / pass recommendation." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/65e867c6-8345-4d81-aaad-6eebf678b239/id-preview-b5ceaf66--5644d76e-59f4-4598-a9c8-3e9cc2114485.lovable.app-1782495524432.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/65e867c6-8345-4d81-aaad-6eebf678b239/id-preview-b5ceaf66--5644d76e-59f4-4598-a9c8-3e9cc2114485.lovable.app-1782495524432.png" },
@@ -111,11 +111,11 @@ function AppHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link to="/" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <span className="font-display text-lg leading-none">L</span>
+            <span className="font-display text-lg leading-none">P</span>
           </div>
           <div className="leading-tight">
-            <div className="font-display text-xl">Ledger</div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">OM Screening</div>
+            <div className="font-display text-xl">Property Pulse Check</div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Risk Screening</div>
           </div>
         </Link>
         <nav className="flex items-center gap-1">
@@ -171,7 +171,7 @@ function RootComponent() {
           <Outlet />
         </main>
         <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-          Ledger does not constitute investment advice. Always verify numbers against the source OM.
+          Property Pulse Check does not constitute investment advice. Always verify numbers against the source OM.
         </footer>
       </div>
     </QueryClientProvider>
