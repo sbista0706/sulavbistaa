@@ -88,7 +88,7 @@
         ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"model\": \"google/gemini-2.0-flash-exp:free\", \"response_format\": { \"type\": \"json_object\" }, \"messages\": [ { \"role\": \"system\", \"content\": \"You are a CRE underwriting analyst. Return ONLY JSON per the Ledger schema (CONTRACT.md §4). Use null for anything not stated; never guess. Include a confidence (high|low|missing) per metric.\" }, { \"role\": \"user\", \"content\": $('Extract OM text').first().json.text } ] } }}",
+        "jsonBody": "={{ { \"model\": \"google/gemini-2.0-flash-exp:free\", \"response_format\": { \"type\": \"json_object\" }, \"messages\": [ { \"role\": \"system\", \"content\": \"You are a CRE underwriting analyst. Return ONLY JSON per the Property Pulse Check schema (CONTRACT.md §4). Use null for anything not stated; never guess. Include a confidence (high|low|missing) per metric.\" }, { \"role\": \"user\", \"content\": $('Extract OM text').first().json.text } ] } }}",
         "options": {}
       },
       "id": "node-openrouter",
