@@ -130,3 +130,12 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
+
+@keyframes kenburns {
+  from { transform: scale(1.04); }
+  to { transform: scale(1.12); }
+}
+
+@utility hero-zoom {
+  animation: kenburns 22s ease-out infinite alternate;
+}
